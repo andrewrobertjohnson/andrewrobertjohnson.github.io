@@ -250,6 +250,37 @@
             color: #c62828;
         }
         
+        .breakdown-list {
+            list-style: none;
+            margin-top: 8px;
+            padding-left: 0;
+        }
+        
+        .breakdown-item {
+            font-size: 13px;
+            color: #86868b;
+            padding: 4px 0;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .breakdown-text {
+            color: #6e6e73;
+        }
+        
+        .breakdown-amount {
+            font-weight: 600;
+            margin-left: 8px;
+        }
+        
+        .breakdown-amount.positive {
+            color: #2e7d32;
+        }
+        
+        .breakdown-amount.negative {
+            color: #c62828;
+        }
+        
         .total-section {
             margin-top: 20px;
             padding-top: 20px;
@@ -531,6 +562,53 @@
             document.getElementById('matrixView').innerHTML = html;
         }
 
+        function calculateBreakdown(person1, person2) {
+            // Calculate expenses person1 paid for person2
+            let person1PaidForPerson2 = 0;
+            expensesData.forEach(expense => {
+                if (expense.by === person1) {
+                    const person2Index = names.indexOf(person2);
+                    if (person2Index !== -1 && expense.checkboxes[person2Index] === true) {
+                        person1PaidForPerson2 += expense.costEach;
+                    }
+                }
+            });
+            
+            // Calculate expenses person2 paid for person1
+            let person2PaidForPerson1 = 0;
+            expensesData.forEach(expense => {
+                if (expense.by === person2) {
+                    const person1Index = names.indexOf(person1);
+                    if (person1Index !== -1 && expense.checkboxes[person1Index] === true) {
+                        person2PaidForPerson1 += expense.costEach;
+                    }
+                }
+            });
+            
+            // Calculate payments person1 made to person2
+            let person1PaidPerson2 = 0;
+            paymentsData.forEach(payment => {
+                if (payment.from === person1 && payment.to === person2) {
+                    person1PaidPerson2 += payment.amount;
+                }
+            });
+            
+            // Calculate payments person2 made to person1
+            let person2PaidPerson1 = 0;
+            paymentsData.forEach(payment => {
+                if (payment.from === person2 && payment.to === person1) {
+                    person2PaidPerson1 += payment.amount;
+                }
+            });
+            
+            return {
+                person1PaidForPerson2,
+                person2PaidForPerson1,
+                person1PaidPerson2,
+                person2PaidPerson1
+            };
+        }
+
         function renderPersonalView(person) {
             if (!person) {
                 document.getElementById('personalView').style.display = 'none';
@@ -551,11 +629,59 @@
                 const personOwesOther = owedMatrix[person][otherPerson];
                 const otherOwesPerson = owedMatrix[otherPerson][person];
                 
+                // Get breakdown data
+                const breakdown = calculateBreakdown(person, otherPerson);
+                
                 if (personOwesOther > 0.01) {
                     html += `
                         <li class="debt-item negative">
-                            <span class="debt-name">Owes ${otherPerson}</span>
-                            <span class="debt-amount negative">£${personOwesOther.toFixed(2)}</span>
+                            <div style="width: 100%;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="debt-name">Owes ${otherPerson}</span>
+                                    <span class="debt-amount negative">£${personOwesOther.toFixed(2)}</span>
+                                </div>
+                                <ul class="breakdown-list">
+                    `;
+                    
+                    if (breakdown.person1PaidForPerson2 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">You spent on ${otherPerson}</span>
+                                <span class="breakdown-amount positive">£${breakdown.person1PaidForPerson2.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    if (breakdown.person2PaidForPerson1 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">${otherPerson} spent on you</span>
+                                <span class="breakdown-amount negative">£${breakdown.person2PaidForPerson1.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    if (breakdown.person1PaidPerson2 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">You paid ${otherPerson}</span>
+                                <span class="breakdown-amount positive">£${breakdown.person1PaidPerson2.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    if (breakdown.person2PaidPerson1 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">${otherPerson} paid you</span>
+                                <span class="breakdown-amount positive">£${breakdown.person2PaidPerson1.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    html += `
+                                </ul>
+                            </div>
                         </li>
                     `;
                     totalOwed += personOwesOther;
@@ -564,8 +690,53 @@
                 if (otherOwesPerson > 0.01) {
                     html += `
                         <li class="debt-item positive">
-                            <span class="debt-name">${otherPerson} owes you</span>
-                            <span class="debt-amount positive">£${otherOwesPerson.toFixed(2)}</span>
+                            <div style="width: 100%;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="debt-name">${otherPerson} owes you</span>
+                                    <span class="debt-amount positive">£${otherOwesPerson.toFixed(2)}</span>
+                                </div>
+                                <ul class="breakdown-list">
+                    `;
+                    
+                    if (breakdown.person1PaidForPerson2 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">You spent on ${otherPerson}</span>
+                                <span class="breakdown-amount positive">£${breakdown.person1PaidForPerson2.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    if (breakdown.person2PaidForPerson1 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">${otherPerson} spent on you</span>
+                                <span class="breakdown-amount negative">£${breakdown.person2PaidForPerson1.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    if (breakdown.person1PaidPerson2 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">You paid ${otherPerson}</span>
+                                <span class="breakdown-amount positive">£${breakdown.person1PaidPerson2.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    if (breakdown.person2PaidPerson1 > 0) {
+                        html += `
+                            <li class="breakdown-item">
+                                <span class="breakdown-text">${otherPerson} paid you</span>
+                                <span class="breakdown-amount positive">£${breakdown.person2PaidPerson1.toFixed(2)}</span>
+                            </li>
+                        `;
+                    }
+                    
+                    html += `
+                                </ul>
+                            </div>
                         </li>
                     `;
                     totalDue += otherOwesPerson;
