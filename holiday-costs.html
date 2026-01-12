@@ -373,10 +373,9 @@
         const SHEET_ID = '1Hx37RxUhdUhLHY5uzf9IXW5biMhzU-toOBiQqVemkXE';
         
         // MANUAL NAME CONFIGURATION
-        // If the automatic name detection doesn't work, uncomment and fill in the line below
-        // with names in the exact order they appear in columns E, F, G, H, I, J, K
-        const MANUAL_NAMES = ['Andrew', 'Stefan', 'Ross', 'Sam', 'Natalie', 'Aimee', 'Nicole'];
-        // const MANUAL_NAMES = null; // Set to null to use automatic detection
+        // Uncomment the line below and add names in the EXACT order they appear in columns E-K
+        // Example: const MANUAL_NAMES = ['Andrew', 'Stefan', 'Ross', 'Sam', 'Natalie', 'Aimee', 'Nicole'];
+        const MANUAL_NAMES = null; // Set to null to use automatic detection
         
         let expensesData = [];
         let paymentsData = [];
@@ -403,9 +402,6 @@
                     row.c.map(cell => cell ? cell.v : null)
                 );
                 
-                console.log(`${sheetName} - Headers from API:`, headers);
-                console.log(`${sheetName} - First data row:`, dataRows[0]);
-                
                 // Return both headers and data
                 return { headers, dataRows };
             } catch (error) {
@@ -420,9 +416,6 @@
             const headers = data.headers;
             const dataRows = data.dataRows;
             
-            console.log('Expenses Headers:', headers);
-            console.log('First data row:', dataRows[0]);
-            
             // Find column indices
             const byIndex = 0; // Column A
             const poundsIndex = 2; // Column C
@@ -431,12 +424,9 @@
             // Use manual names if provided
             if (MANUAL_NAMES && MANUAL_NAMES.length > 0) {
                 names = MANUAL_NAMES;
-                console.log('Using MANUAL_NAMES:', names);
             } else {
                 // Try to get names from headers E-K (indices 4-10)
                 const headerNames = headers.slice(4, 11).filter(n => n && n !== true && n !== false && typeof n === 'string');
-                
-                console.log('Header names (E1:K1):', headerNames);
                 
                 // If headers have actual names, use them
                 if (headerNames.length > 0) {
@@ -449,11 +439,9 @@
                     });
                     names = Array.from(uniqueNames).sort();
                 }
-                
-                console.log('Extracted names:', names);
             }
             
-            // Parse expense data with detailed logging
+            // Parse expense data
             const parsedExpenses = dataRows.map((row, index) => ({
                 rowNumber: index + 2, // +2 because row 1 is headers, row 2 is first data
                 by: row[byIndex],
@@ -462,20 +450,12 @@
                 costEach: row[costEachIndex]
             }));
             
-            console.log('All parsed expenses (before filtering):', parsedExpenses);
-            
             expensesData = parsedExpenses.filter(item => item.by && item.costEach);
             
-            console.log('Filtered expenses (after removing empty rows):', expensesData);
-            
-            // Log which rows were filtered out
+            // Log warning if rows were filtered out (data quality issue)
             const filteredOut = parsedExpenses.filter(item => !item.by || !item.costEach);
             if (filteredOut.length > 0) {
-                console.warn('⚠️ These rows were filtered out:', filteredOut);
-                filteredOut.forEach(row => {
-                    if (!row.by) console.warn(`Row ${row.rowNumber}: Missing "By" field`);
-                    if (!row.costEach) console.warn(`Row ${row.rowNumber}: Missing or zero "Cost Each" field`);
-                });
+                console.warn(`⚠️ ${filteredOut.length} expense row(s) skipped due to missing data`);
             }
         }
 
@@ -786,17 +766,24 @@
         function populateDropdown() {
             const select = document.getElementById('personSelect');
             
+            // Clear existing options except the first one (the placeholder)
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            // Add name options
             names.forEach(name => {
                 const option = document.createElement('option');
                 option.value = name;
                 option.textContent = name;
                 select.appendChild(option);
             });
-            
-            select.addEventListener('change', (e) => {
-                renderPersonalView(e.target.value);
-            });
         }
+
+        // Set up event listener ONCE on page load (outside populateDropdown)
+        document.getElementById('personSelect').addEventListener('change', (e) => {
+            renderPersonalView(e.target.value);
+        });
 
         async function loadData() {
             try {
